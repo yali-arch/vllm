@@ -2,6 +2,9 @@ import argparse
 from collections import namedtuple
 from itertools import product
 
+import contextlib
+import os
+
 import torch
 import triton
 
@@ -16,9 +19,9 @@ from vllm.v1.attention.backends.utils import (CommonAttentionMetadata,
 from vllm.v1.kv_cache_interface import FullAttentionSpec
 
 BACKENDS_TO_TEST = [
-    _Backend.FLASH_ATTN_VLLM_V1,
-    _Backend.TRITON_ATTN_VLLM_V1,
-    _Backend.TREE_ATTN,
+    # _Backend.FLASH_ATTN_VLLM_V1,
+    # _Backend.TRITON_ATTN_VLLM_V1,
+    # _Backend.TREE_ATTN,
     _Backend.FLASHINFER_VLLM_V1,
 ]
 
@@ -313,11 +316,12 @@ CONFIGS_TO_TEST = [
 MODELS = (
     # Head size 576 is not supported by FlashAttention
     # "/home/yali/scratch.yali_gpu/llm-models/DeepSeek-V3",
-    "/home/yali/scratch.yali_gpu/llm-models/llama-3.1-model/Meta-Llama-3.1-8B",
-    "/home/yali/scratch.yali_gpu/llm-models/llama-3.1-model/Meta-Llama-3.1-70B-Instruct",
-    "/home/yali/scratch.yali_gpu/llm-models/Qwen3/Qwen3-32B",
-    "/home/yali/scratch.yali_gpu/llm-models/Qwen3/Qwen3-235B-A22B",
-    "/home/yali/scratch.yali_gpu/llm-models/llama4-models/Llama-4-Maverick-17B-128E-Instruct",
+    # "/home/yali/scratch.yali_gpu/llm-models/llama-3.1-model/Meta-Llama-3.1-8B",
+    # "/home/yali/scratch.yali_gpu/llm-models/llama-3.1-model/Meta-Llama-3.1-70B-Instruct",
+    # "/home/yali/scratch.yali_gpu/llm-models/Qwen3/Qwen3-32B",
+    # "/home/yali/scratch.yali_gpu/llm-models/Qwen3/Qwen3-235B-A22B",
+    # "/home/yali/scratch.yali_gpu/llm-models/llama4-models/Llama-4-Maverick-17B-128E-Instruct",
+    "/home/yali/scratch.yali_gpu/llm-models/llama-models-v3/8B",
 )
 
 BATCHES = (
@@ -522,16 +526,51 @@ def benchmark(backend, model, seq_lens, query_lens, use_cudagraph):
     return times
 
 
+@contextlib.contextmanager
+def temporary_environ(env_vars):
+    """
+    Temporarily set environment variables and restore them afterward.
+    We have to do this vs monkeypatch because monkeypatch doesn't work
+    with "module" scoped fixtures.
+    """
+    original_env = {k: os.environ.get(k) for k in env_vars}
+    try:
+        os.environ.update(env_vars)
+        yield
+    finally:
+        for k, v in original_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--cuda-graph", action="store_true",
                         help="Use CUDA graph for benchmarking")
+    parser.add_argument("--trtllm", action="store_true",
+                        help="Use TRTLLM attention")
+    parser.add_argument("--native-flashinfer", action="store_true",
+                        help="Use native FlashInfer attention")
     args = parser.parse_args()
     if args.cuda_graph:
         print("Using CUDA graph for benchmarking")
 
-    benchmark.run(
-        print_data=True,
-        show_plots=False,
-        use_cudagraph=args.cuda_graph
-    )
+    env_vars = {
+        "VLLM_USE_V1": "1",
+        "VLLM_FLASH_ATTN_VERSION": "3",
+    }
+    if args.trtllm:
+        env_vars["VLLM_USE_TRTLLM_ATTENTION"] = "1"
+        print("Using TRT-LLM attention")
+    if args.native_flashinfer:
+        env_vars["VLLM_USE_TRTLLM_ATTENTION"] = "0"
+        print("Using native FlashInfer attention")
+
+    with temporary_environ(env_vars):
+        benchmark.run(
+            print_data=True,
+            show_plots=False,
+            use_cudagraph=args.cuda_graph
+        )
