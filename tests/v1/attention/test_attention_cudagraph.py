@@ -19,9 +19,9 @@ from vllm.v1.attention.backends.utils import (CommonAttentionMetadata,
 from vllm.v1.kv_cache_interface import FullAttentionSpec
 
 BACKENDS_TO_TEST = [
-    # _Backend.FLASH_ATTN_VLLM_V1,
-    # _Backend.TRITON_ATTN_VLLM_V1,
-    # _Backend.TREE_ATTN,
+    _Backend.FLASH_ATTN_VLLM_V1,
+    _Backend.TRITON_ATTN_VLLM_V1,
+    _Backend.TREE_ATTN,
     _Backend.FLASHINFER_VLLM_V1,
 ]
 
@@ -39,33 +39,6 @@ def _convert_dtype_to_torch(dtype):
         return dtype
     else:
         raise ValueError(f"Unknown dtype: {dtype}")
-
-
-# Define common batch configurations
-BATCH_SPECS = {
-    "small_decode":
-    BatchSpec(seq_lens=[32, 40], query_lens=[1, 1]),
-    "small_prefill":
-    BatchSpec(seq_lens=[32, 40], query_lens=[8, 8]),
-    "mixed_small":
-    BatchSpec(seq_lens=[32, 40, 48, 56], query_lens=[1, 1, 5, 5]),
-    "medium_decode":
-    BatchSpec(seq_lens=[128, 256, 512, 1024, 128, 256, 512, 1024],
-              query_lens=[1, 1, 1, 1, 1, 1, 1, 1]),
-    "medium_prefill":
-    BatchSpec(seq_lens=[256, 512, 1024, 2048], query_lens=[16, 16, 16, 16]),
-    "mixed_medium":
-    BatchSpec(seq_lens=[512, 1024, 2048, 512, 1024, 2048],
-              query_lens=[1, 1, 1, 7, 7, 7]),
-    "large_decode":
-    BatchSpec(seq_lens=[2048] * 32, query_lens=[1] * 32),
-    "large_prefill":
-    BatchSpec(seq_lens=[4096] * 8, query_lens=[32] * 8),
-    "single_decode":
-    BatchSpec(seq_lens=[1024], query_lens=[1]),
-    "single_prefill":
-    BatchSpec(seq_lens=[1024], query_lens=[64]),
-}
 
 
 def create_dummy_kv_cache(kv_cache_spec: FullAttentionSpec,
@@ -291,37 +264,14 @@ def run_attention_backend(backend: _Backend, kv_cache_spec: FullAttentionSpec,
     return times, output
 
 
-ATTENTION_CONFIG = [
-    "batch_size",
-    "seq_lens",
-    "query_lens",
-    "num_q_heads",
-    "num_kv_heads",
-    "head_size",
-    "scale"
-]
-AttentionConfig = namedtuple("AttentionConfig", ATTENTION_CONFIG)
-
-CONFIGS_TO_TEST = [
-    AttentionConfig(
-        batch_size=1,
-        seq_lens=1024,
-        query_lens=1,
-        num_q_heads=1,
-        num_kv_heads=1,
-        head_size=1,
-        scale=1.0),
-]
-
 MODELS = (
     # Head size 576 is not supported by FlashAttention
     # "/home/yali/scratch.yali_gpu/llm-models/DeepSeek-V3",
-    # "/home/yali/scratch.yali_gpu/llm-models/llama-3.1-model/Meta-Llama-3.1-8B",
-    # "/home/yali/scratch.yali_gpu/llm-models/llama-3.1-model/Meta-Llama-3.1-70B-Instruct",
-    # "/home/yali/scratch.yali_gpu/llm-models/Qwen3/Qwen3-32B",
-    # "/home/yali/scratch.yali_gpu/llm-models/Qwen3/Qwen3-235B-A22B",
-    # "/home/yali/scratch.yali_gpu/llm-models/llama4-models/Llama-4-Maverick-17B-128E-Instruct",
-    "/home/yali/scratch.yali_gpu/llm-models/llama-models-v3/8B",
+    "/home/yali/scratch.yali_gpu/llm-models/llama-3.1-model/Meta-Llama-3.1-8B",
+    "/home/yali/scratch.yali_gpu/llm-models/llama-3.1-model/Meta-Llama-3.1-70B-Instruct",
+    "/home/yali/scratch.yali_gpu/llm-models/Qwen3/Qwen3-32B",
+    "/home/yali/scratch.yali_gpu/llm-models/Qwen3/Qwen3-235B-A22B",
+    "/home/yali/scratch.yali_gpu/llm-models/llama4-models/Llama-4-Maverick-17B-128E-Instruct",
 )
 
 BATCHES = (
