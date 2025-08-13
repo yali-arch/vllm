@@ -1,7 +1,4 @@
-
-# SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
-"""Tests for v1 attention backends without GPUModelRunner dependency."""
+import argparse
 from collections import namedtuple
 from itertools import product
 
@@ -350,7 +347,7 @@ MODELS_TO_BENCHMARK = list((m, *p) for (m, p) in product(MODELS, BATCHES))
         args={},
     )
 )
-def benchmark(backend, model, seq_lens, query_lens):
+def benchmark(backend, model, seq_lens, query_lens, use_cudagraph):
     batch_spec = BatchSpec(seq_lens=seq_lens, query_lens=query_lens)
     vllm_config = create_vllm_config(model_name=model,
                                      max_model_len=max(batch_spec.seq_lens))
@@ -463,7 +460,7 @@ def benchmark(backend, model, seq_lens, query_lens):
         randomize_blocks=True)
 
     # 4. Run vLLM backends
-        # FlashAttentionm + FlexAttention:
+    # FlashAttentionm + FlexAttention:
     #   [2, num_blocks, block_size, num_kv_heads, head_size]
     # FlashInfer:
     #   [num_blocks, 2, block_size, num_kv_heads, head_size]
@@ -477,7 +474,6 @@ def benchmark(backend, model, seq_lens, query_lens):
             2, 3).contiguous().transpose(2, 3)
         set_kv_cache_layout("HND")
 
-    use_cudagraph = True
     times, backend_output = run_attention_backend(backend, kv_cache_spec,
                                                   ["placeholder"], vllm_config,
                                                   device, common_attn_metadata,
@@ -527,7 +523,15 @@ def benchmark(backend, model, seq_lens, query_lens):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cuda-graph", action="store_true",
+                        help="Use CUDA graph for benchmarking")
+    args = parser.parse_args()
+    if args.cuda_graph:
+        print("Using CUDA graph for benchmarking")
+
     benchmark.run(
         print_data=True,
-        show_plots=False
+        show_plots=False,
+        use_cudagraph=args.cuda_graph
     )
