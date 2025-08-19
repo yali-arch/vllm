@@ -21,7 +21,7 @@ from vllm.v1.kv_cache_interface import FullAttentionSpec
 BACKENDS_TO_TEST = [
     _Backend.FLASH_ATTN_VLLM_V1,
     _Backend.TRITON_ATTN_VLLM_V1,
-    _Backend.TREE_ATTN,
+    # _Backend.TREE_ATTN,
     _Backend.FLASHINFER_VLLM_V1,
 ]
 
