@@ -1,5 +1,4 @@
 import argparse
-from collections import namedtuple
 from itertools import product
 
 import contextlib
